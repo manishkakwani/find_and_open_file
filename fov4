@@ -1,0 +1,95 @@
+#!/usr/bin/env ruby
+
+def search(match_string)
+  if specified_search_dir
+    %x[find #{ARGV[0]} -type f -iname '*#{match_string}*' | sort]
+  else
+    %x[find ~/Dropbox/Ebooks_and_Presentations/ -type f -iname '*#{match_string}*' | sort]
+  end
+end
+
+def unspecified_search_dir_and_file
+  ARGV.length == 0
+end
+
+def default_search_dir
+  ARGV.length == 1
+end
+
+def specified_search_dir
+  ARGV.length == 2
+end
+
+def get_input
+  STDIN.gets.chomp
+end
+
+def user_input
+  search(get_input)
+end
+
+case 
+when unspecified_search_dir_and_file
+  puts "Specify a file to search for:"
+  list = user_input
+when default_search_dir
+  list = search(ARGV[0])
+else
+  list = search(ARGV[1])
+end
+
+while list.empty? do
+  puts "No matches. Try searching again:"
+  list = user_input
+end
+
+filelist = list.split("\n")
+
+while filelist.length >=50 do
+  puts "Dude, you got mad matches. Be more specific dummy."
+  list = user_input
+  filelist = list.split("\n") 
+end
+
+filelist.each_with_index do |name, ind|
+  #remove root path for default search results
+  if default_search_dir
+    name = name.slice(53..-1)
+  end
+  puts "#{ind}: #{name}"
+end
+
+def open_file(file)
+=begin 
+these changes keep the file open if you interrupt the process in the shell,
+but what I really is an independent process so you can return to the command line immediately
+=end
+  %x[(xdg-open '#{file}' &> /dev/null &)]
+end
+
+if filelist.length ==1
+  open_file(filelist[0])
+  exit
+else
+  puts "Select a number for the file you want to open."
+end
+
+selection = get_input.to_i 
+while selection < 0 || selection > filelist.length
+  puts "Don't confuse me.  Enter a number between 0 and #{filelist.length - 1}."
+  selection = get_input.to_i
+end
+
+open_file(filelist[selection])
+
+=begin
+Next Features: 
+1. improved regex to allow more fuzzy searching
+2. remove the process from the shell after opening file
+done3. allow text re-entry instead of exiting program 
+4. allow others to use script (change find directory to current working directory for universal use, and name.slice)
+done5. remove code duplication for opening a file and getting input
+done6. filenames with spaces don't currently work
+done7. only show files, not directories, in results--update: I just realized that you can specify a file only search in the find command, so i don't the files_only method.  Duh!!!!
+done8. allow user to specify search directory and also use a default directory if no directory provided
+=end
