@@ -1,0 +1,76 @@
+#!/usr/bin/env ruby
+
+def search(match_string)
+  %x[find ~/Dropbox/Ebooks_and_Presentations/ -iname '*#{match_string}*' | sort]
+end
+
+def get_input
+  STDIN.gets.chomp
+end
+
+if ARGV.empty?
+  puts "Specify a file to search for:"
+  list = search(get_input)
+else
+  list = search(ARGV[0])
+end
+
+while list.empty? do
+  puts "No matches. Try searching again:"
+  list = search(get_input)
+end
+
+list = list.split("\n")
+
+def files_only(paths)
+  files = []
+  paths.each do |item|
+    files << item if item.include?(".")
+  end
+  files
+end
+
+filelist = files_only(list) 
+while filelist.length >=50 do
+  puts "Dude, you got mad matches. Be more specific dummy."
+  list = search(get_input)
+  list = list.split("\n") 
+  filelist = files_only(list)
+end
+
+filelist.each_with_index do |name, ind|
+  #only want file basenames
+  name = name.slice(53..-1)
+  puts "#{ind}: #{name}"
+end
+
+def open_file(file)
+  #these changes don't seem to be detaching the process from the shell
+  %x[(xdg-open '#{file}' &> /dev/null &)]
+end
+
+if filelist.length ==1
+  open_file(filelist[0])
+  exit
+else
+  puts "Select a number for the file you want to open."
+end
+
+selection = get_input.to_i 
+while selection < 0 || selection > filelist.length
+  puts "Don't confuse me.  Enter a number between 0 and #{filelist.length - 1}."
+  selection = get_input.to_i
+end
+
+open_file(filelist[selection])
+
+=begin
+Next Features: 
+1. improved regex to allow more fuzzy searching
+2. remove the process from the shell after opening file
+done3. allow text re-entry instead of exiting program 
+4. allow others to use script (change find directory to current working directory for universal use, and name.slice)
+done5. remove code duplication for opening a file and getting input
+done6. filenames with spaces don't currently work
+done7. only show files, not directories, in results
+=end
