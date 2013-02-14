@@ -1,0 +1,51 @@
+#!/usr/bin/env ruby
+
+filelist = %x[find ~/Dropbox/Ebooks_and_Presentations/ -iname '*#{ARGV[0]}*' | sort]
+
+if filelist.empty?
+  puts "No matches. Peace out."
+  exit
+else
+  filelist = filelist.split("\n")
+end
+
+filelist.each_with_index do |name, ind|
+  #only want file basenames
+  name = name.slice(53..-1)
+  puts "#{ind}: #{name}"
+end
+
+def open_file(file)
+  %x[xdg-open '#{file}']
+end
+
+if filelist.length >= 50
+  puts "Dude, you got mad matches. Be more specific dummy."
+elsif filelist.length ==1
+  open_file(filelist[0])
+  exit
+else
+  puts "Select a number for the file you want to open."
+end
+
+def get_input
+  STDIN.gets.chomp.to_i
+end
+
+selection = get_input 
+while selection < 0 || selection > filelist.length
+  puts "Don't confuse me.  Enter a number between 0 and #{filelist.length - 1}."
+  selection = get_input
+end
+
+open_file(filelist[selection])
+
+=begin
+Next Features: 
+1. improved regex to allow more fuzzy searching
+2. remove the process from the shell after opening file
+3. allow text re-entry instead of exiting program 
+4. allow others to use script (change find directory to current working directory for universal use, and name.slice)
+--5. remove code duplication for opening a file and getting input
+--6. filenames with spaces don't currently work
+=end
