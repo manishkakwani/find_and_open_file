@@ -1,0 +1,156 @@
+#!/usr/bin/env ruby
+
+class Finder
+  $DEFAULT_DIR = "/home/manishkakwani/Dropbox/Ebooks_and_Presentations/"
+
+  def initialize(search_dir=$DEFAULT_DIR, match_string="")             
+    @search_dir = search_dir
+    @match_string = match_string
+  end
+  
+  def run
+    get_matching_files
+    redo_search_if_no_matches
+    manage_list_length
+    select_file(@search_dir, @list)
+  end
+
+  def search
+    @list = %x[find #{@search_dir} -type f -iname '*#{@match_string}*' | sort]
+  end
+
+  def user_input
+    @match_string = STDIN.gets.chomp
+  end
+
+  def guarantee_match_string
+    while @match_string == ""
+      puts "Why you trying to be lazy? Specify a file to search for:"
+      user_input
+    end
+  end
+
+  def get_matching_files
+    guarantee_match_string
+    search
+  end
+
+  def search_from_user_input
+    user_input
+    search
+  end
+
+  def redo_search_if_no_matches
+    while @list == "" do
+      puts "No matches. Try searching again:"
+      search_from_user_input
+    end
+  end
+
+  def manage_list_length
+    split_list_into_entries
+    while list_too_long? do
+      puts "Dude, you got mad matches. Be more specific dummy."
+      search_from_user_input
+      split_list_into_entries
+    end
+  end
+
+  def split_list_into_entries
+    @list = @list.split("\n")
+  end
+
+  def list_too_long?
+    @list.length >= 50
+  end
+
+  def select_file(search_dir, list)
+    Selector.new(search_dir, list).select_file
+  end
+end
+
+class Selector
+  def initialize(search_dir, list)
+    @search_dir = search_dir 
+    @list = list 
+  end
+
+  def select_file
+    open_if_only_one_match
+    print_list
+    choose_file
+  end
+
+  def open_if_only_one_match
+    if @list.length == 1
+      open_file_and_exit(@list[0])
+    end
+  end
+  
+  def print_list
+    @list.each_with_index do |name, ind|
+      name = remove_root_path_for_default_search(name)
+      puts "#{ind}: #{name}"
+    end
+  end
+
+  def remove_root_path_for_default_search(path)
+    path.sub($DEFAULT_DIR, "")
+  end
+
+  def choose_file
+    puts "Select a number for the file you want to open."
+    selection = get_input
+    while selection < 0 || selection >= @list.length
+      puts "Don't confuse me.  Enter a number between 0 and #{@list.length-1}."
+      selection = get_input
+    end
+    open_file_and_exit(@list[selection])
+  end
+
+  def open_file_and_exit(file)
+    Opener.open_file_and_exit(file)
+  end
+  
+  def get_input
+    STDIN.gets.chomp.to_i
+  end
+end
+
+class Opener
+  def self.open_file_and_exit(file)
+=begin 
+these changes keep the file open if you interrupt the process in the shell,
+but what I really is an independent process so you can return to the command line immediately
+=end
+    %x[(xdg-open '#{file}' &> /dev/null &)]
+    exit
+  end
+end
+
+if $0 == __FILE__
+  case ARGV.length 
+  when 0
+    Finder.new().run
+  when 1
+    if ARGV[0] == "." || ARGV[0].include?("/")
+      Finder.new(ARGV[0]).run
+    end
+    Finder.new($DEFAULT_DIR, ARGV[0]).run
+  else
+    Finder.new(ARGV[0], ARGV[1]).run
+  end
+end
+
+=begin
+Next Features: 
+1. improved regex to allow more fuzzy searching
+2. remove the process from the shell after opening file
+done3. allow text re-entry instead of exiting program 
+4. allow others to use script (change find directory to current working directory for universal use, and name.slice)
+done5. remove code duplication for opening a file and getting input
+done6. filenames with spaces don't currently work
+done7. only show files, not directories, in results--update: I just realized that you can specify a file only search in the find command, so i don't the files_only method.  Duh!!!!
+done8. allow user to specify search directory and also use a default directory if no directory provided
+done9. what if the user provides one argument that they intended to be a directory, not a file?
+=end
